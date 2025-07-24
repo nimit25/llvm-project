@@ -5244,13 +5244,13 @@ static MachineBasicBlock *lowerWaveReduce(MachineInstr &MI,
               .addImm(AMDGPU::sub1);
           break;
         }
-      }
+          }
       case AMDGPU::S_SUB_I32: {
         Register NegatedVal = MRI.createVirtualRegister(DstRegClass);
 
         // Take the negation of the source operand.
-        BuildMI(BB, MI, DL, TII->get(AMDGPU::S_MUL_I32), NegatedVal)
-            .addImm(-1)
+        BuildMI(BB, MI, DL, TII->get(AMDGPU::S_SUB_I32), NegatedVal)
+            .addImm(0)
             .addReg(SrcReg);
         BuildMI(BB, MI, DL, TII->get(AMDGPU::S_MUL_I32), DstReg)
             .addReg(NegatedVal)
@@ -5288,17 +5288,16 @@ static MachineBasicBlock *lowerWaveReduce(MachineInstr &MI,
             MI, MRI, MI.getOperand(1), Src1RC, AMDGPU::sub1, Src1SubRC);
 
         if (Opc == AMDGPU::S_SUB_U64_PSEUDO) {
-          BuildMI(BB, MI, DL, TII->get(AMDGPU::S_MUL_I32), NegatedValLo)
-              .addReg(NewAccumulator->getOperand(0).getReg())
-              .addImm(-1);
-
-              BuildMI(BB, MI, DL, TII->get(AMDGPU::S_ASHR_I32), NegatedValHi)
-                  .addReg(NegatedValLo)
-                  .addImm(31)
-                  .setOperandDead(3); // Dead scc
-              BuildMI(BB, MI, DL, TII->get(AMDGPU::S_MUL_I32), Op1L_Op0H_Reg)
-                  .add(Op1L)
-                  .addReg(NegatedValHi);
+          BuildMI(BB, MI, DL, TII->get(AMDGPU::S_SUB_I32), NegatedValLo)
+              .addImm(0)
+              .addReg(NewAccumulator->getOperand(0).getReg());
+          BuildMI(BB, MI, DL, TII->get(AMDGPU::S_ASHR_I32), NegatedValHi)
+              .addReg(NegatedValLo)
+              .addImm(31)
+              .setOperandDead(3); // Dead scc
+          BuildMI(BB, MI, DL, TII->get(AMDGPU::S_MUL_I32), Op1L_Op0H_Reg)
+              .add(Op1L)
+              .addReg(NegatedValHi);
         }
         Register LowOpcode = Opc == AMDGPU::S_SUB_U64_PSEUDO
                                  ? NegatedValLo
