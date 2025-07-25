@@ -5196,54 +5196,54 @@ static MachineBasicBlock *lowerWaveReduce(MachineInstr &MI,
                 .addReg(NewAccumulator->getOperand(0).getReg())
                 .addImm(1)
                 .setOperandDead(3); // Dead scc
-        if (is32BitOpc) {
-          BuildMI(BB, MI, DL, TII->get(AMDGPU::S_MUL_I32), DstReg)
-              .addReg(SrcReg)
-              .addReg(ParityRegister);
-          break;
-        } else {
-          Register DestSub0 =
-              MRI.createVirtualRegister(&AMDGPU::SReg_32RegClass);
-          Register DestSub1 =
-              MRI.createVirtualRegister(&AMDGPU::SReg_32RegClass);
-          Register Op1H_Op0L_Reg =
-              MRI.createVirtualRegister(&AMDGPU::SReg_32RegClass);
-          Register CarryReg =
-              MRI.createVirtualRegister(&AMDGPU::SReg_32RegClass);
+            if (is32BitOpc) {
+              BuildMI(BB, MI, DL, TII->get(AMDGPU::S_MUL_I32), DstReg)
+                  .addReg(SrcReg)
+                  .addReg(ParityRegister);
+              break;
+            } else {
+              Register DestSub0 =
+                  MRI.createVirtualRegister(&AMDGPU::SReg_32RegClass);
+              Register DestSub1 =
+                  MRI.createVirtualRegister(&AMDGPU::SReg_32RegClass);
+              Register Op1H_Op0L_Reg =
+                  MRI.createVirtualRegister(&AMDGPU::SReg_32RegClass);
+              Register CarryReg =
+                  MRI.createVirtualRegister(&AMDGPU::SReg_32RegClass);
 
-          const TargetRegisterClass *SrcRC = MRI.getRegClass(SrcReg);
-          const TargetRegisterClass *SrcSubRC =
-              TRI->getSubRegisterClass(SrcRC, AMDGPU::sub0);
+              const TargetRegisterClass *SrcRC = MRI.getRegClass(SrcReg);
+              const TargetRegisterClass *SrcSubRC =
+                  TRI->getSubRegisterClass(SrcRC, AMDGPU::sub0);
 
-          MachineOperand Op1L = TII->buildExtractSubRegOrImm(
-              MI, MRI, MI.getOperand(1), SrcRC, AMDGPU::sub0, SrcSubRC);
-          MachineOperand Op1H = TII->buildExtractSubRegOrImm(
-              MI, MRI, MI.getOperand(1), SrcRC, AMDGPU::sub1, SrcSubRC);
+              MachineOperand Op1L = TII->buildExtractSubRegOrImm(
+                  MI, MRI, MI.getOperand(1), SrcRC, AMDGPU::sub0, SrcSubRC);
+              MachineOperand Op1H = TII->buildExtractSubRegOrImm(
+                  MI, MRI, MI.getOperand(1), SrcRC, AMDGPU::sub1, SrcSubRC);
 
-          BuildMI(BB, MI, DL, TII->get(AMDGPU::S_MUL_I32), DestSub0)
-              .add(Op1L)
-              .addReg(ParityRegister);
+              BuildMI(BB, MI, DL, TII->get(AMDGPU::S_MUL_I32), DestSub0)
+                  .add(Op1L)
+                  .addReg(ParityRegister);
 
-          BuildMI(BB, MI, DL, TII->get(AMDGPU::S_MUL_I32), Op1H_Op0L_Reg)
-              .add(Op1H)
-              .addReg(ParityRegister);
+              BuildMI(BB, MI, DL, TII->get(AMDGPU::S_MUL_I32), Op1H_Op0L_Reg)
+                  .add(Op1H)
+                  .addReg(ParityRegister);
 
-          BuildMI(BB, MI, DL, TII->get(AMDGPU::S_MUL_HI_U32), CarryReg)
-              .add(Op1L)
-              .addReg(ParityRegister);
+              BuildMI(BB, MI, DL, TII->get(AMDGPU::S_MUL_HI_U32), CarryReg)
+                  .add(Op1L)
+                  .addReg(ParityRegister);
 
-          BuildMI(BB, MI, DL, TII->get(AMDGPU::S_ADD_U32), DestSub1)
-              .addReg(CarryReg)
-              .addReg(Op1H_Op0L_Reg)
-              .setOperandDead(3); // Dead scc
+              BuildMI(BB, MI, DL, TII->get(AMDGPU::S_ADD_U32), DestSub1)
+                  .addReg(CarryReg)
+                  .addReg(Op1H_Op0L_Reg)
+                  .setOperandDead(3); // Dead scc
 
-          BuildMI(BB, MI, DL, TII->get(TargetOpcode::REG_SEQUENCE), DstReg)
-              .addReg(DestSub0)
-              .addImm(AMDGPU::sub0)
-              .addReg(DestSub1)
-              .addImm(AMDGPU::sub1);
-          break;
-        }
+              BuildMI(BB, MI, DL, TII->get(TargetOpcode::REG_SEQUENCE), DstReg)
+                  .addReg(DestSub0)
+                  .addImm(AMDGPU::sub0)
+                  .addReg(DestSub1)
+                  .addImm(AMDGPU::sub1);
+              break;
+            }
           }
       case AMDGPU::S_SUB_I32: {
         Register NegatedVal = MRI.createVirtualRegister(DstRegClass);
@@ -5389,14 +5389,13 @@ static MachineBasicBlock *lowerWaveReduce(MachineInstr &MI,
         IdentityValue = int32_t(0); // u|max
         break;
       }
-          BuildMI(BB, I, DL, TII->get(AMDGPU::S_MOV_B32), Identitylo)
-              .addImm(IdentityValue);
-          BuildMI(BB, I, DL, TII->get(TargetOpcode::REG_SEQUENCE),
-                  IdentityValReg)
-              .addReg(Identitylo)
-              .addImm(AMDGPU::sub0)
-              .addReg(Identityhi)
-              .addImm(AMDGPU::sub1);
+      BuildMI(BB, I, DL, TII->get(AMDGPU::S_MOV_B32), Identitylo)
+          .addImm(IdentityValue);
+      BuildMI(BB, I, DL, TII->get(TargetOpcode::REG_SEQUENCE), IdentityValReg)
+          .addReg(Identitylo)
+          .addImm(AMDGPU::sub0)
+          .addReg(Identityhi)
+          .addImm(AMDGPU::sub1);
     }
     // clang-format off
     BuildMI(BB, I, DL, TII->get(AMDGPU::S_BRANCH))
