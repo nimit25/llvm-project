@@ -35,6 +35,9 @@
 #include "llvm/IR/PassManager.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Pass.h"
+#include "llvm/ProfileData/DataAccessProf.h"
+#include "llvm/ProfileData/InstrProfReader.h"
+#include "llvm/Support/VirtualFileSystem.h"
 
 #define DEBUG_TYPE "static-data-annotator"
 
@@ -49,8 +52,22 @@ public:
   StaticDataProfileInfo *SDPI = nullptr;
   const ProfileSummaryInfo *PSI = nullptr;
 
-  StaticDataAnnotator() : ModulePass(ID) {
+  std::string MemoryProfileFile;
+  IntrusiveRefCntPtr<vfs::FileSystem> FS;
+
+  std::unique_ptr<IndexedInstrProfReader> MemProfReader;
+  // A non-owned pointer to the DataAccessProfData object.
+  memprof::DataAccessProfData *DataAccessProfile = nullptr;
+
+  StaticDataAnnotator() : ModulePass(ID), MemoryProfileFile("") {
     initializeStaticDataAnnotatorPass(*PassRegistry::getPassRegistry());
+  }
+
+  StaticDataAnnotator(std::string MemoryProfileFile)
+      : ModulePass(ID), MemoryProfileFile(MemoryProfileFile) {
+    initializeStaticDataAnnotatorPass(*PassRegistry::getPassRegistry());
+    // TODO: Pass PGOOptions->FS to the constructor and override this one.
+    FS = vfs::getRealFileSystem();
   }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
@@ -72,6 +89,18 @@ bool StaticDataAnnotator::runOnModule(Module &M) {
 
   if (!PSI->hasProfileSummary())
     return false;
+
+  if (!MemoryProfileFile.empty()) {
+    auto MemProfReaderOrErr =
+        IndexedInstrProfReader::create(MemoryProfileFile, *FS);
+    // TODO: improve error handling here like how MemProfUse does it.
+    if (Error E = MemProfReaderOrErr.takeError()) {
+      LLVM_DEBUG(dbgs() << "Failed to read memory profile file:\n");
+    } else {
+      MemProfReader = std::move(MemProfReaderOrErr.get());
+      DataAccessProfile = MemProfReader->getDataAccessProfileData();
+    }
+  }
 
   bool Changed = false;
   for (auto &GV : M.globals()) {
@@ -103,6 +132,6 @@ char StaticDataAnnotator::ID = 0;
 INITIALIZE_PASS(StaticDataAnnotator, DEBUG_TYPE, "Static Data Annotator", false,
                 false)
 
-ModulePass *llvm::createStaticDataAnnotatorPass() {
-  return new StaticDataAnnotator();
+ModulePass *llvm::createStaticDataAnnotatorPass(std::string MemoryProfileFile) {
+  return new StaticDataAnnotator(MemoryProfileFile);
 }
